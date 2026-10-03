@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model PatientDemographics {
+  hn     String @id @map("HN")
+  age    Int
+  gender String
+
+  erVisits ErVisitRecord[] // ผู้ป่วย 1 คน มีได้หลาย visit
+
+  @@map("patient_demographics")
+}
+
+model AccidentRecord {
+  id                    String   @id @default(uuid()) @map("Accident_id")
+  reportedBy            String
+  accidentDateTime      DateTime
+  latitude              Decimal  @db.Decimal(10, 7)
+  longitude             Decimal  @db.Decimal(10, 7)
+  roadName              String
+  subDistrict           String
+  weatherCondition      String
+  roadSurfaceCondition  String
+  lightingCondition     String
+  vehiclesInvolvedCount Int
+  casualtiesCount       Int      @default(0)
+
+  erVisits    ErVisitRecord[] // อุบัติเหตุ 1 ครั้ง มีได้หลาย visit
+  predictions PredictionResult[] // ถูกจับคู่กับผลพยากรณ์ได้หลายรายการ
+
+  @@index([accidentDateTime])
+  @@map("accident_record")
+}
+
+model ErVisitRecord {
+  id               String   @id @default(uuid()) @map("Visit_id")
+  hn               String // FK -> PatientDemographics
+  accidentId       String // FK -> AccidentRecord
+  incidentDateTime DateTime
+  arrivalDateTime  DateTime
+  transportMode    String
+  roleInAccident   String
+  vehicleType      String
+  triageLevel      String
+  gcsScore         Int
+  riskBehavior     Int
+  outcomeStatus    String
+  losErMinutes     Int
+
+  patient   PatientDemographics @relation(fields: [hn], references: [hn])
+  accident  AccidentRecord      @relation(fields: [accidentId], references: [id])
+  diagnoses DiagnosisRecord[]
+  costs     FinancialCost[]
+
+  @@map("er_visit_record")
+}
+
+model DiagnosisRecord {
+  id            String @id @default(uuid()) @map("Diagnosis_id")
+  visitId       String // FK -> ErVisitRecord
+  icd10Code     String
+  injuryType    String
+  affectedOrgan String
+  severityScore Int
+
+  visit ErVisitRecord @relation(fields: [visitId], references: [id])
+
+  @@map("diagnosis_record")
+}
+
+model FinancialCost {
+  id                  String  @id @default(uuid()) @map("Financial_id")
+  visitId             String // FK -> ErVisitRecord
+  totalMedicalCost    Decimal @db.Decimal(12, 2)
+  costOfInactionValue Decimal @db.Decimal(12, 2)
+  paymentRights       String
+
+  visit ErVisitRecord @relation(fields: [visitId], references: [id])
+
+  @@map("financial_cost")
+}
+
+model PredictionResult {
+  id                   String   @id @default(uuid()) @map("Prediction_id")
+  matchedAccidentId    String? // FK -> AccidentRecord
+  modelVersion         String
+  predictedAt          DateTime
+  latitude             Decimal  @db.Decimal(10, 7)
+  longitude            Decimal  @db.Decimal(10, 7)
+  riskScore            Int // 0-100
+  riskLevel            Int // 1 = Low, 2 = Medium, 3 = High
+  predictedPeriodStart DateTime
+  predictedPeriodEnd   DateTime
+
+  matchedAccident AccidentRecord? @relation(fields: [matchedAccidentId], references: [id])
+
+  @@map("prediction_result")
+}
+

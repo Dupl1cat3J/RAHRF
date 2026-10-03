@@ -1,14 +1,24 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { publicRouter } from "./routes/public";
+import { adminRouter } from "./routes/admin";
+import { uploadRouter } from "./routes/upload";
+import { requireAdmin } from "./middleware/requireAdmin";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
+app.get("/", (_req, res) => {
+  res.json({ message: "RAHRF API is running" });
 });
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`API running on port ${PORT}`));
+app.use("/api/public", publicRouter);
+app.use("/api/admin/data", requireAdmin, uploadRouter);
+app.use("/api/admin", adminRouter);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
