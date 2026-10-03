@@ -29,6 +29,13 @@ const DIAGNOSES: Record<number, { icd10: string; injury: string; organ: string }
   5: { icd10: "S06.5", injury: "Intracranial hemorrhage", organ: "Head" },
 };
 const BASE_COST = [0, 3000, 8000, 20000, 60000, 150000]; // ค่ารักษาตามความรุนแรง (บาท)
+// ความเสียหายทรัพย์สินตามชนิดยานพาหนะ (บาท)
+const assetDamage = (v: string) =>
+  v === "Car" ? randInt(5000, 15000)
+  : v === "Bus" ? randInt(10000, 20000)
+  : v === "Motorcycle" ? randInt(1500, 4500)
+  : v === "Bicycle" ? randInt(500, 1500)
+  : 0; // Pedestrian
 
 async function main() {
   // ลบข้อมูลเก่าก่อน (ลูกก่อนแม่) เพื่อให้รันซ้ำได้โดยข้อมูลไม่ซ้อนกัน
@@ -79,6 +86,8 @@ async function main() {
         lightingCondition: when.getHours() >= 18 || when.getHours() < 6 ? "Night" : "Daylight",
         vehiclesInvolvedCount: randInt(1, 2),
         casualtiesCount: 1,
+        vehicleType: vehicle,
+        assetDamageCost: assetDamage(vehicle),
         // สร้างลูกซ้อนในคำสั่งเดียว: Prisma ใส่ FK ให้เองอัตโนมัติ
         erVisits: {
           create: {

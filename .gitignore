@@ -1,3 +1,10 @@
 node_modules
 .env
 .next
+
+backend/generated
+.agents
+.claude
+.cursor
+.devin
+*.msi

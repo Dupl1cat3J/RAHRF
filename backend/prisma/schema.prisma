@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -30,6 +31,8 @@ model AccidentRecord {
   lightingCondition     String
   vehiclesInvolvedCount Int
   casualtiesCount       Int      @default(0)
+  vehicleType           String
+  assetDamageCost       Decimal  @db.Decimal(12, 2)
 
   erVisits    ErVisitRecord[] // อุบัติเหตุ 1 ครั้ง มีได้หลาย visit
   predictions PredictionResult[] // ถูกจับคู่กับผลพยากรณ์ได้หลายรายการ
@@ -58,6 +61,8 @@ model ErVisitRecord {
   diagnoses DiagnosisRecord[]
   costs     FinancialCost[]
 
+  @@index([hn])
+  @@index([accidentId])
   @@map("er_visit_record")
 }
 
@@ -71,6 +76,7 @@ model DiagnosisRecord {
 
   visit ErVisitRecord @relation(fields: [visitId], references: [id])
 
+  @@index([visitId])
   @@map("diagnosis_record")
 }
 
@@ -83,6 +89,7 @@ model FinancialCost {
 
   visit ErVisitRecord @relation(fields: [visitId], references: [id])
 
+  @@index([visitId])
   @@map("financial_cost")
 }
 
@@ -100,6 +107,6 @@ model PredictionResult {
 
   matchedAccident AccidentRecord? @relation(fields: [matchedAccidentId], references: [id])
 
+  @@index([matchedAccidentId])
   @@map("prediction_result")
 }
-
