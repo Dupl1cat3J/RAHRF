@@ -102,3 +102,57 @@ publicRouter.get("/hazard-map", async (_req, res) => {
     res.status(500).json({ error: "Failed to fetch hazard map" });
   }
 });
+
+// Hotspots: สรุปรายถนน (จำนวนอุบัติเหตุ + คะแนนความเสี่ยงล่าสุดจากผลพยากรณ์)
+// ใช้กับหน้า PSU Hazard Map ไม่มีข้อมูลผู้ป่วย
+const num = (d: unknown) => Number(d ?? 0);
+
+publicRouter.get("/hotspots", async (_req, res) => {
+  try {
+    const [accidents, predictions] = await Promise.all([
+      prisma.accidentRecord.findMany({
+        select: { roadName: true, latitude: true, longitude: true },
+      }),
+      prisma.predictionResult.findMany({ orderBy: { predictedAt: "desc" } }),
+    ]);
+
+    const groups = new Map<string, { name: string; n: number; lat: number; lng: number }>();
+    for (const a of accidents) {
+      const g = groups.get(a.roadName) ?? { name: a.roadName, n: 0, lat: 0, lng: 0 };
+      g.n += 1;
+      g.lat += num(a.latitude);
+      g.lng += num(a.longitude);
+      groups.set(a.roadName, g);
+    }
+
+    const hotspots = [...groups.values()]
+      .map((g) => {
+        const lat = g.lat / g.n;
+        const lng = g.lng / g.n;
+        let best: (typeof predictions)[number] | null = null;
+        let bestD = Infinity;
+        for (const p of predictions) {
+          const d = (num(p.latitude) - lat) ** 2 + (num(p.longitude) - lng) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            best = p;
+          }
+        }
+        return {
+          id: g.name,
+          name: g.name,
+          lat,
+          lng,
+          incidents: g.n,
+          riskScore: best ? best.riskScore : 0,
+          riskLevel: best ? best.riskLevel : 1,
+        };
+      })
+      .sort((a, b) => b.riskScore - a.riskScore);
+
+    res.json(hotspots);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch hotspots" });
+  }
+});
