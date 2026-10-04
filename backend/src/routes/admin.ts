@@ -11,7 +11,7 @@ const num = (v: unknown) => Number(v ?? 0);
 // 1) Overview
 adminRouter.get("/overview", async (_req, res) => {
   try {
-    const [accidents, visits, predictions, highRisk, cost, los] =
+    const [accidents, visits, predictions, highRisk, cost, los, asset, severe] =
       await Promise.all([
         prisma.accidentRecord.count(),
         prisma.erVisitRecord.count(),
@@ -21,6 +21,8 @@ adminRouter.get("/overview", async (_req, res) => {
           _sum: { totalMedicalCost: true, costOfInactionValue: true },
         }),
         prisma.erVisitRecord.aggregate({ _avg: { losErMinutes: true } }),
+        prisma.accidentRecord.aggregate({ _sum: { assetDamageCost: true } }),
+        prisma.diagnosisRecord.count({ where: { severityScore: { gte: 4 } } }),
       ]);
 
     res.json({
@@ -28,7 +30,9 @@ adminRouter.get("/overview", async (_req, res) => {
       erVisits: visits,
       predictions,
       highRiskPredictions: highRisk,
+      severeInjuries: severe,
       totalMedicalCost: num(cost._sum.totalMedicalCost),
+      assetDamageCost: num(asset._sum.assetDamageCost),
       totalCostOfInaction: num(cost._sum.costOfInactionValue),
       avgErLosMinutes: num(los._avg.losErMinutes),
     });
