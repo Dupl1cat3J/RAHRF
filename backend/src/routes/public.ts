@@ -59,7 +59,7 @@ publicRouter.get("/stats", async (_req, res) => {
       byHour,
     });
   } catch (error) {
-    console.error(error);
+    console.error("stats error:", error);
     res.status(500).json({ error: "Failed to fetch stats" });
   }
 });
