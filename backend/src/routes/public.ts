@@ -6,10 +6,10 @@ import { prisma } from "../lib/prisma";
 // ส่งเฉพาะข้อมูลสรุปรวมจาก AccidentRecord และ PredictionResult เท่านั้น
 export const publicRouter = Router();
 
-// สถิติความปลอดภัยของ PSU
+// สถิติความปลอดภัยของ PSU (ตัวเลขรวมเท่านั้น ไม่มีข้อมูลผู้ป่วย)
 publicRouter.get("/stats", async (_req, res) => {
   try {
-    const [total, byRoad, byWeather, byHour] = await Promise.all([
+    const [total, byRoad, byWeather, byVehicle, byHour] = await Promise.all([
       prisma.accidentRecord.aggregate({
         _count: { _all: true },
         _sum: { casualtiesCount: true },
@@ -24,6 +24,11 @@ publicRouter.get("/stats", async (_req, res) => {
       prisma.accidentRecord.groupBy({
         by: ["weatherCondition"],
         _count: { _all: true },
+      }),
+      prisma.accidentRecord.groupBy({
+        by: ["vehicleType"],
+        _count: { _all: true },
+        orderBy: { _count: { vehicleType: "desc" } },
       }),
       // เวลาใน DB เก็บเป็น UTC แปลงเป็นเวลาไทยก่อนนับรายชั่วโมง
       prisma.$queryRaw<{ hour: number; count: number }[]>`
@@ -46,6 +51,10 @@ publicRouter.get("/stats", async (_req, res) => {
       byWeather: byWeather.map((w) => ({
         weather: w.weatherCondition,
         accidents: w._count._all,
+      })),
+      byVehicle: byVehicle.map((v) => ({
+        vehicle: v.vehicleType,
+        accidents: v._count._all,
       })),
       byHour,
     });
