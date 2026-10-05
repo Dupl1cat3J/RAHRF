@@ -52,21 +52,43 @@ const en = {
     roadsTitle: "Roads with the most incidents",
     incidents: (n: number) => `${n} incidents`,
     casualtiesCount: (n: number) => `${n} casualties`,
+    campus: {
+      sample: "Sample data",
+      safetyTitle: "Campus Safety Level",
+      levels: { normal: "Normal", caution: "Caution", alert: "Alert" } as Record<string, string>,
+      safetyNotes: {
+        normal: "Street lights, speed bumps, and crossings around PSU Hat Yai are all working normally.",
+        caution: "Some lights or crossings around PSU Hat Yai need attention.",
+        alert: "Several safety systems around PSU Hat Yai need attention.",
+      } as Record<string, string>,
+      wellLitTitle: "Well-Lit Walkways",
+      wellLitNote: "Evening walkers used well-lit paths with blue emergency lights.",
+      escortsTitle: "Active Safety Escorts",
+      completed: "Completed",
+      avgResponse: (m: number) => `${m} min avg. response time`,
+      escortsNote: (n: number) =>
+        `${n} students were safely escorted this week, with no safety issues.`,
+    },
   },
   map: {
     title: "PSU Hazard Map",
-    intro:
-      "See which areas around campus have the highest accident risk. Tap a filter to show only one risk level.",
+    intro: "See hazards, safe crossings, and well-lit paths around campus in real time.",
     filters: "Filter locations",
     all: "All Points",
-    filter: { 3: "High Risk", 2: "Medium Risk", 1: "Low Risk" } as Record<number, string>,
-    levels: { 3: "High", 2: "Medium", 1: "Low" } as Record<number, string>,
-    topLine: (inc: number, score: number) =>
-      `Highest risk in this view: ${inc} incidents, risk score ${score}.`,
-    watchTitle: "Locations to watch",
-    watchDesc: "Sorted by predicted risk.",
-    empty: "No locations match this filter.",
-    incidents: (n: number) => `${n} incidents`,
+    chips: { hazard: "Active Hazards", crossing: "Safe Crossings" },
+    messages: {
+      hazards: [
+        "Caution: Road construction near the crossing.",
+        "Caution: Wet road surface, please slow down.",
+        "Caution: Heavy traffic when classes end.",
+      ],
+      crossing: "Safe crossing with a marked zebra crossing and warning signal.",
+      lit: "Well-lit path with LED lighting until sunrise.",
+    },
+    nightTitle: "Well-Lit Paths at Night",
+    nightBody:
+      "LED lighting active along main walkways until sunrise. Safest routes run between Faculty of Engineering and Student Dormitory.",
+    sample: "Sample data",
   },
 };
 
@@ -124,21 +146,43 @@ const th: typeof en = {
     roadsTitle: "ถนนที่เกิดอุบัติเหตุมากที่สุด",
     incidents: (n: number) => `${n} ครั้ง`,
     casualtiesCount: (n: number) => `ผู้ประสบเหตุ ${n} ราย`,
+    campus: {
+      sample: "ข้อมูลตัวอย่าง",
+      safetyTitle: "ระดับความปลอดภัยในมหาวิทยาลัย",
+      levels: { normal: "ปกติ", caution: "เฝ้าระวัง", alert: "เตือนภัย" },
+      safetyNotes: {
+        normal: "ไฟถนน เนินชะลอความเร็ว และทางข้ามบริเวณ ม.อ. หาดใหญ่ ทำงานเป็นปกติทั้งหมด",
+        caution: "ไฟส่องสว่างหรือทางข้ามบางจุดใน ม.อ. หาดใหญ่ต้องได้รับการตรวจสอบ",
+        alert: "ระบบความปลอดภัยหลายจุดใน ม.อ. หาดใหญ่ต้องได้รับการตรวจสอบ",
+      },
+      wellLitTitle: "ทางเดินที่มีแสงสว่างเพียงพอ",
+      wellLitNote: "ผู้เดินเท้าช่วงเย็นใช้เส้นทางที่มีไฟส่องสว่างและไฟฉุกเฉินสีน้ำเงิน",
+      escortsTitle: "บริการเดินส่งอย่างปลอดภัย",
+      completed: "เสร็จสิ้นแล้ว",
+      avgResponse: (m: number) => `เวลาตอบสนองเฉลี่ย ${m} นาที`,
+      escortsNote: (n: number) =>
+        `สัปดาห์นี้มีนักศึกษาได้รับการเดินส่งอย่างปลอดภัย ${n} คน ไม่พบปัญหาด้านความปลอดภัย`,
+    },
   },
   map: {
     title: "แผนที่จุดเสี่ยง PSU",
-    intro:
-      "ดูว่าพื้นที่ใดในมหาวิทยาลัยมีความเสี่ยงอุบัติเหตุสูง แตะตัวกรองเพื่อดูเฉพาะระดับความเสี่ยงที่ต้องการ",
+    intro: "ดูจุดเสี่ยง ทางข้ามปลอดภัย และเส้นทางที่มีแสงสว่างรอบมหาวิทยาลัยแบบเรียลไทม์",
     filters: "กรองตำแหน่ง",
     all: "ทุกจุด",
-    filter: { 3: "เสี่ยงสูง", 2: "เสี่ยงปานกลาง", 1: "เสี่ยงต่ำ" },
-    levels: { 3: "สูง", 2: "ปานกลาง", 1: "ต่ำ" },
-    topLine: (inc: number, score: number) =>
-      `เสี่ยงสูงสุดในมุมมองนี้: เกิดเหตุ ${inc} ครั้ง คะแนนความเสี่ยง ${score}`,
-    watchTitle: "จุดที่ควรระวัง",
-    watchDesc: "เรียงตามความเสี่ยงที่คาดการณ์",
-    empty: "ไม่มีตำแหน่งที่ตรงกับตัวกรองนี้",
-    incidents: (n: number) => `${n} ครั้ง`,
+    chips: { hazard: "จุดอันตรายขณะนี้", crossing: "ทางข้ามปลอดภัย" },
+    messages: {
+      hazards: [
+        "ระวัง: มีการก่อสร้างถนนบริเวณทางข้าม",
+        "ระวัง: ผิวถนนเปียก โปรดขับช้าลง",
+        "ระวัง: การจราจรหนาแน่นช่วงเลิกเรียน",
+      ],
+      crossing: "ทางข้ามปลอดภัย มีทางม้าลายและสัญญาณเตือน",
+      lit: "เส้นทางที่มีไฟ LED ส่องสว่างจนถึงรุ่งเช้า",
+    },
+    nightTitle: "เส้นทางสว่างยามค่ำคืน",
+    nightBody:
+      "ไฟ LED เปิดตลอดแนวทางเดินหลักจนถึงรุ่งเช้า เส้นทางที่ปลอดภัยที่สุดอยู่ระหว่างคณะวิศวกรรมศาสตร์กับหอพักนักศึกษา",
+    sample: "ข้อมูลตัวอย่าง",
   },
 };
 

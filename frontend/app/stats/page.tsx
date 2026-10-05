@@ -1,4 +1,5 @@
 import { Clock, MapPin, PieChart, ShieldAlert, TriangleAlert, Users } from "lucide-react";
+import { CampusSafetyCard, EscortsCard, WellLitCard } from "@/components/public/CampusStatusCards";
 import PublicShell from "@/components/public/PublicShell";
 import TimeOfDayChart, { type Slot, type SlotKey } from "@/components/public/TimeOfDayChart";
 import VehicleDonut from "@/components/public/VehicleDonut";
@@ -103,13 +104,17 @@ export default async function StatsPage() {
           <p className="mt-3 text-lg text-slate-600">{t.stats.intro}</p>
         </header>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             label={t.stats.totalIncidents}
             value={stats.totalAccidents}
             note={t.stats.totalIncidentsNote}
             icon={<TriangleAlert className="size-5" />}
           />
+          {/* Sample data (see lib/mock-campus.ts) */}
+          <CampusSafetyCard locale={locale} />
+          <WellLitCard locale={locale} />
+          <EscortsCard locale={locale} />
           <StatCard
             label={t.stats.casualties}
             value={stats.totalCasualties}

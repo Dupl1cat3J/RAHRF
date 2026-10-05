@@ -1,17 +1,29 @@
 "use client";
 
+import { Sunrise } from "lucide-react";
 import { useMemo, useState } from "react";
 import HazardHeatMapLoader from "@/components/HazardHeatMapLoader";
 import { dict, type Locale } from "@/lib/i18n";
+import { buildMockPoints, type MockPoint, type PointType } from "@/lib/mock-map";
 import type { Hotspot } from "@/lib/public-api";
 
-type Filter = "all" | 1 | 2 | 3;
+type Filter = "all" | "hazard" | "crossing";
 
-const STYLE: Record<number, { dot: string; badge: string }> = {
-  3: { dot: "bg-red-600", badge: "bg-red-100 text-red-700" },
-  2: { dot: "bg-amber-500", badge: "bg-amber-100 text-amber-800" },
-  1: { dot: "bg-emerald-600", badge: "bg-emerald-100 text-emerald-800" },
+// Colors are inline hex so they always render, whatever Tailwind has compiled.
+const COLOR: Record<PointType, string> = {
+  hazard: "#b91c1c",
+  crossing: "#059669",
+  lit: "#059669",
 };
+
+function Dot({ color, className = "" }: { color: string; className?: string }) {
+  return (
+    <span
+      className={`size-2.5 shrink-0 rounded-full ${className}`}
+      style={{ backgroundColor: color }}
+    />
+  );
+}
 
 export default function HazardMapView({
   hotspots,
@@ -22,24 +34,29 @@ export default function HazardMapView({
 }) {
   const t = dict[locale].map;
   const [filter, setFilter] = useState<Filter>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const count = (lvl: number) => hotspots.filter((h) => h.riskLevel === lvl).length;
+  const allPoints = useMemo(() => buildMockPoints(hotspots), [hotspots]);
+  const count = (type: PointType) => allPoints.filter((p) => p.type === type).length;
 
   const visible = useMemo(
-    () => (filter === "all" ? hotspots : hotspots.filter((h) => h.riskLevel === filter)),
-    [hotspots, filter],
+    () => (filter === "all" ? allPoints : allPoints.filter((p) => p.type === filter)),
+    [allPoints, filter],
   );
-  const ranked = useMemo(
-    () => [...visible].sort((a, b) => b.riskScore - a.riskScore),
-    [visible],
-  );
-  const top = ranked[0];
+
+  // If the selected pin is hidden by the filter, fall back to the first visible one.
+  const selected: MockPoint | undefined =
+    visible.find((p) => p.id === selectedId) ?? visible[0];
+
+  function messageFor(p: MockPoint) {
+    if (p.type === "hazard") return t.messages.hazards[p.messageIndex % t.messages.hazards.length];
+    return t.messages[p.type];
+  }
 
   const chips: { key: Filter; label: string; n: number; dot?: string }[] = [
-    { key: "all", label: t.all, n: hotspots.length },
-    { key: 3, label: t.filter[3], n: count(3), dot: STYLE[3].dot },
-    { key: 2, label: t.filter[2], n: count(2), dot: STYLE[2].dot },
-    { key: 1, label: t.filter[1], n: count(1), dot: STYLE[1].dot },
+    { key: "all", label: t.all, n: allPoints.length },
+    { key: "hazard", label: t.chips.hazard, n: count("hazard"), dot: COLOR.hazard },
+    { key: "crossing", label: t.chips.crossing, n: count("crossing"), dot: COLOR.crossing },
   ];
 
   return (
@@ -49,7 +66,7 @@ export default function HazardMapView({
           const active = filter === c.key;
           return (
             <button
-              key={String(c.key)}
+              key={c.key}
               type="button"
               onClick={() => setFilter(c.key)}
               aria-pressed={active}
@@ -57,7 +74,7 @@ export default function HazardMapView({
                 active ? "bg-blue-600 text-white" : "bg-indigo-50 text-slate-800 hover:bg-indigo-100"
               }`}
             >
-              {c.dot && <span className={`size-2.5 rounded-full ${c.dot}`} />}
+              {c.dot && <Dot color={c.dot} />}
               {c.label} ({c.n})
             </button>
           );
@@ -65,57 +82,44 @@ export default function HazardMapView({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-3 lg:col-span-2">
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-            <HazardHeatMapLoader
-              key={String(filter)}
-              hotspots={visible}
-              popup={(h) =>
-                `${t.incidents(h.incidents)} · ${t.levels[h.riskLevel] ?? "-"} (${h.riskScore})`
-              }
-            />
-            {top && (
-              <div className="border-t p-4">
-                <p className="font-semibold">{top.name}</p>
-                <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
-                  <span className={`size-2.5 shrink-0 rounded-full ${STYLE[top.riskLevel]?.dot ?? "bg-slate-400"}`} />
-                  {t.topLine(top.incidents, top.riskScore)}
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 lg:col-span-2">
+          <HazardHeatMapLoader
+            key={filter}
+            points={visible}
+            selectedId={selected?.id ?? null}
+            onSelect={setSelectedId}
+          />
+          {selected && (
+            <div className="flex items-start justify-between gap-3 border-t p-4">
+              <div>
+                <p className="font-semibold">{selected.name}</p>
+                <p className="mt-1 flex items-start gap-2 text-sm text-slate-600">
+                  <Dot color={COLOR[selected.type]} className="mt-1.5" />
+                  {messageFor(selected)}
                 </p>
               </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 rounded-2xl bg-white p-3 text-sm font-semibold shadow-sm ring-1 ring-slate-200">
-            {[3, 2, 1].map((l) => (
-              <span key={l} className="flex items-center gap-2">
-                <span className={`size-2.5 rounded-full ${STYLE[l].dot}`} />
-                {t.filter[l]}
+              <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                {t.sample}
               </span>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
 
-        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <h2 className="text-lg font-semibold">{t.watchTitle}</h2>
-          <p className="mt-1 text-sm text-slate-600">{t.watchDesc}</p>
-          {ranked.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-600">{t.empty}</p>
-          ) : (
-            <ul className="mt-4 divide-y">
-              {ranked.slice(0, 8).map((h) => (
-                <li key={h.id} className="flex items-start justify-between gap-3 py-3 text-sm">
-                  <div>
-                    <p className="font-medium">{h.name}</p>
-                    <p className="text-xs text-slate-500">{t.incidents(h.incidents)}</p>
-                  </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STYLE[h.riskLevel]?.badge ?? ""}`}>
-                    {t.levels[h.riskLevel] ?? "-"} ({h.riskScore})
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <div>
+          <section className="flex items-start gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            {/* Fixed square box, icon centered inside it */}
+            <span
+              className="flex shrink-0 items-center justify-center rounded-xl bg-indigo-50"
+              style={{ width: 56, height: 56, color: "#047857" }}
+            >
+              <Sunrise className="size-6" aria-hidden />
+            </span>
+            <div>
+              <h2 className="font-semibold">{t.nightTitle}</h2>
+              <p className="mt-2 text-sm text-slate-600">{t.nightBody}</p>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
