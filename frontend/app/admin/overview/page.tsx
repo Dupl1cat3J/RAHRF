@@ -139,7 +139,7 @@ export default async function OverviewPage() {
               );
             })}
           </div>
-          <Link href="/admin/reports" className={`${linkStyle} mt-4`}>
+          <Link href="/admin/reports" className={`${linkStyle} mt-5`}>
             {t("viewPatient")} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -172,7 +172,7 @@ export default async function OverviewPage() {
               </span>
             </div>
           </div>
-          <Link href="/admin/reports" className={`${linkStyle} mt-4`}>
+          <Link href="/admin/reports" className={`${linkStyle} mt-10`}>
             {t("viewPatient")} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

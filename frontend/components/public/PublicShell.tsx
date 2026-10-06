@@ -8,8 +8,6 @@ const FONT_FAMILY = '"Google Sans", system-ui, -apple-system, "Segoe UI", sans-s
 const LOGOS: { src: string; alt: string }[] = [
    { src: "/logos/dida.png", alt: "DIDA" },
    { src: "/logos/psu-ic.png", alt: "PSU International College" },
-  // { src: "/logos/dida.png", alt: "DIDA" },
-  // { src: "/logos/psu-ic.png", alt: "PSU International College" },
 ];
 
 export default function PublicShell({
