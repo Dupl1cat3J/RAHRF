@@ -11,30 +11,108 @@ const num = (v: unknown) => Number(v ?? 0);
 // 1) Overview
 adminRouter.get("/overview", async (_req, res) => {
   try {
-    const [accidents, visits, predictions, highRisk, cost, los, asset, severe] =
-      await Promise.all([
-        prisma.accidentRecord.count(),
-        prisma.erVisitRecord.count(),
-        prisma.predictionResult.count(),
-        prisma.predictionResult.count({ where: { riskLevel: 3 } }),
-        prisma.financialCost.aggregate({
-          _sum: { totalMedicalCost: true, costOfInactionValue: true },
-        }),
-        prisma.erVisitRecord.aggregate({ _avg: { losErMinutes: true } }),
-        prisma.accidentRecord.aggregate({ _sum: { assetDamageCost: true } }),
-        prisma.diagnosisRecord.count({ where: { severityScore: { gte: 4 } } }),
-      ]);
+    const accidents = await prisma.accidentRecord.findMany({
+      select: {
+        roadName: true,
+        vehicleType: true,
+        accidentDateTime: true,
+        assetDamageCost: true,
+        erVisits: {
+          select: {
+            outcomeStatus: true,
+            costs: { select: { totalMedicalCost: true } },
+            diagnoses: { select: { severityScore: true } },
+          },
+        },
+      },
+    });
+
+    const DAY = 86400000;
+    const now = Date.now();
+    const inWindow = (d: Date, from: number, to: number) =>
+      d.getTime() >= now - from * DAY && d.getTime() < now - to * DAY;
+    // เปลี่ยนแปลง (%) ของ 30 วันล่าสุด เทียบกับ 30 วันก่อนหน้า
+    const trend = (cur: number, prev: number) =>
+      prev > 0 ? Math.round(((cur - prev) / prev) * 1000) / 10 : null;
+
+    let severeHigh = 0;
+    let severeMedium = 0;
+    let fatalities = 0;
+    let medical = 0;
+    let asset = 0;
+    const cur = { acc: 0, severe: 0, loss: 0 };
+    const prev = { acc: 0, severe: 0, loss: 0 };
+    const byVehicle: Record<string, number> = {};
+    const roadVehicle: Record<string, Record<string, number>> = {};
+    // แถว = จันทร์ถึงอาทิตย์, คอลัมน์ = 6 ช่วงเวลา ช่วงละ 4 ชั่วโมง (เวลาไทย)
+    const heat = Array.from({ length: 7 }, () => Array<number>(6).fill(0));
+
+    for (const a of accidents) {
+      const assetCost = num(a.assetDamageCost);
+      let medicalCost = 0;
+      let severe = 0;
+      for (const v of a.erVisits) {
+        if (v.outcomeStatus === "Deceased") fatalities += 1;
+        for (const c of v.costs) medicalCost += num(c.totalMedicalCost);
+        for (const d of v.diagnoses) {
+          if (d.severityScore >= 5) {
+            severeHigh += 1;
+            severe += 1;
+          } else if (d.severityScore === 4) {
+            severeMedium += 1;
+            severe += 1;
+          }
+        }
+      }
+      medical += medicalCost;
+      asset += assetCost;
+
+      byVehicle[a.vehicleType] = (byVehicle[a.vehicleType] ?? 0) + 1;
+      const rv = (roadVehicle[a.roadName] ??= {});
+      rv[a.vehicleType] = (rv[a.vehicleType] ?? 0) + 1;
+
+      // แปลงเป็นเวลาไทย (UTC+7) แล้วอ่านค่าด้วย getUTC*
+      const t = new Date(a.accidentDateTime.getTime() + 7 * 3600000);
+      heat[(t.getUTCDay() + 6) % 7][Math.floor(t.getUTCHours() / 4)] += 1;
+
+      const bucket = inWindow(a.accidentDateTime, 30, 0)
+        ? cur
+        : inWindow(a.accidentDateTime, 60, 30)
+          ? prev
+          : null;
+      if (bucket) {
+        bucket.acc += 1;
+        bucket.severe += severe;
+        bucket.loss += medicalCost + assetCost;
+      }
+    }
+
+    const primaryVehicleByRoad = Object.fromEntries(
+      Object.entries(roadVehicle).map(([road, counts]) => [
+        road,
+        Object.entries(counts).sort((x, y) => y[1] - x[1])[0][0],
+      ]),
+    );
 
     res.json({
-      accidents,
-      erVisits: visits,
-      predictions,
-      highRiskPredictions: highRisk,
-      severeInjuries: severe,
-      totalMedicalCost: num(cost._sum.totalMedicalCost),
-      assetDamageCost: num(asset._sum.assetDamageCost),
-      totalCostOfInaction: num(cost._sum.costOfInactionValue),
-      avgErLosMinutes: num(los._avg.losErMinutes),
+      totalAccidents: accidents.length,
+      severeInjuries: severeHigh + severeMedium,
+      severeHigh,
+      severeMedium,
+      fatalities,
+      medicalCost: medical,
+      assetDamageCost: asset,
+      totalLoss: medical + asset,
+      trends: {
+        accidents: trend(cur.acc, prev.acc),
+        severe: trend(cur.severe, prev.severe),
+        loss: trend(cur.loss, prev.loss),
+      },
+      byVehicle: Object.entries(byVehicle)
+        .map(([vehicle, accidents]) => ({ vehicle, accidents }))
+        .sort((a, b) => b.accidents - a.accidents),
+      primaryVehicleByRoad,
+      heatmap: heat,
     });
   } catch (error) {
     console.error(error);

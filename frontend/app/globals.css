@@ -130,3 +130,13 @@
     @apply font-sans;
   }
 }
+
+:root {
+  --rahrf-font: "Google Sans", sans-serif;
+}
+
+/* ใช้ฟอนต์เดียวทั้งระบบ (ไทยและอังกฤษ) รวมถึงกราฟและแผนที่ */
+body,
+body * {
+  font-family: var(--rahrf-font);
+}

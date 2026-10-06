@@ -187,3 +187,4 @@ const th: typeof en = {
 };
 
 export const dict: Record<Locale, typeof en> = { en, th };
+

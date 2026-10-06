@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 export const SESSION_COOKIE = "rahrf_session";
 
+// ปิดระบบล็อกอินไว้ก่อน ตั้ง REQUIRE_LOGIN=true เมื่อพร้อมใช้หน้า Login
+export const LOGIN_REQUIRED = process.env.REQUIRE_LOGIN === "true";
+
 export async function isLoggedIn() {
+  if (!LOGIN_REQUIRED) return true;
   const store = await cookies();
   const value = store.get(SESSION_COOKIE)?.value;
   const secret = process.env.SESSION_SECRET;
