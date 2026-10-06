@@ -55,8 +55,10 @@ export const SHEET_SPECS: SheetSpec[] = [
       { key: "weatherCondition", type: "string" },
       { key: "roadSurfaceCondition", type: "string" },
       { key: "lightingCondition", type: "string" },
+      { key: "vehicleType", type: "string" },
       { key: "vehiclesInvolvedCount", type: "int", min: 0 },
       { key: "casualtiesCount", type: "int", min: 0 },
+      { key: "assetDamageCost", type: "decimal", min: 0 },
     ],
   },
   {

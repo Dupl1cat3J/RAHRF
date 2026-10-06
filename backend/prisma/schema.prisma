@@ -110,3 +110,16 @@ model PredictionResult {
   @@index([matchedAccidentId])
   @@map("prediction_result")
 }
+
+model UploadLog {
+  id           String   @id @default(uuid()) @map("Upload_id")
+  fileName     String
+  format       String
+  recordsAdded Int
+  status       String // "Success" | "Failed"
+  detail       Json? // สรุปรายชีต หรือรายการ error
+  uploadedAt   DateTime @default(now())
+ 
+  @@index([uploadedAt])
+  @@map("upload_log")
+}
