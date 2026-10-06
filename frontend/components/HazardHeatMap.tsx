@@ -59,6 +59,9 @@ export default function HazardHeatMap({
   onSelect,
   selectedId,
   popup,
+  onSelectHotspot,
+  heightClass = "h-[480px]",
+  height,
 }: {
   /** Risk halos with a popup (used by the admin dashboard). */
   hotspots?: MapHotspot[];
@@ -67,14 +70,21 @@ export default function HazardHeatMap({
   onSelect?: (id: string) => void;
   selectedId?: string | null;
   popup?: (h: MapHotspot) => string;
+  /** If given, clicking a halo dot calls this instead of opening a popup. */
+  onSelectHotspot?: (id: string) => void;
+  heightClass?: string;
+  /** Pixel height. If given, it wins over heightClass (inline style, always applied). */
+  height?: number;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const markers = useRef(new Map<string, L.Marker>());
   const onSelectRef = useRef(onSelect);
+  const onHotspotRef = useRef(onSelectHotspot);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
-  }, [onSelect]);
+    onHotspotRef.current = onSelectHotspot;
+  }, [onSelect, onSelectHotspot]);
 
   useEffect(() => {
     if (!el.current) return;
@@ -105,15 +115,19 @@ export default function HazardHeatMap({
       detail.textContent = popup ? popup(h) : `${h.incidents} incidents`;
       box.append(title, detail);
 
-      L.circleMarker([h.lat, h.lng], {
+      const dot = L.circleMarker([h.lat, h.lng], {
         radius: 8,
         color: "#ffffff",
         weight: 2,
         fillColor: color,
         fillOpacity: 1,
-      })
-        .bindPopup(box)
-        .addTo(group);
+      });
+      if (onHotspotRef.current) {
+        dot.on("click", () => onHotspotRef.current?.(h.id));
+      } else {
+        dot.bindPopup(box);
+      }
+      dot.addTo(group);
     }
 
     for (const p of points) {
@@ -157,5 +171,11 @@ export default function HazardHeatMap({
     });
   }, [selectedId, points, hotspots]);
 
-  return <div ref={el} className="isolate h-[480px] w-full rounded-xl" />;
+  return (
+    <div
+      ref={el}
+      className={`isolate w-full rounded-xl ${height ? "" : heightClass}`}
+      style={height ? { height } : undefined}
+    />
+  );
 }
