@@ -6,6 +6,8 @@ const FONT_FAMILY = '"Google Sans", system-ui, -apple-system, "Segoe UI", sans-s
 
 // Put logo files in frontend/public/logos/ and uncomment the lines below.
 const LOGOS: { src: string; alt: string }[] = [
+   { src: "/logos/dida.png", alt: "DIDA" },
+   { src: "/logos/psu-ic.png", alt: "PSU International College" },
   // { src: "/logos/dida.png", alt: "DIDA" },
   // { src: "/logos/psu-ic.png", alt: "PSU International College" },
 ];
