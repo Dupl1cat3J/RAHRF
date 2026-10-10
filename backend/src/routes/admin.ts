@@ -252,3 +252,108 @@ adminRouter.get("/risk-cost", async (_req, res) => {
     res.status(500).json({ error: "Failed to fetch risk and cost" });
   }
 });
+
+// Hotspot cards: ข้อมูลการ์ดบนแผนที่ (ใช้ AccidentRecord และ PredictionResult เท่านั้น ไม่มีข้อมูลผู้ป่วย)
+adminRouter.get("/hotspot-cards", async (_req, res) => {
+  try {
+    const [accidents, predictions] = await Promise.all([
+      prisma.accidentRecord.findMany({
+        select: {
+          roadName: true,
+          latitude: true,
+          longitude: true,
+          vehicleType: true,
+          weatherCondition: true,
+          roadSurfaceCondition: true,
+          lightingCondition: true,
+        },
+      }),
+      prisma.predictionResult.findMany({ orderBy: { predictedAt: "desc" } }),
+    ]);
+
+    type Group = {
+      name: string;
+      n: number;
+      lat: number;
+      lng: number;
+      dark: number;
+      wet: number;
+      rain: number;
+      vehicles: Record<string, number>;
+    };
+    const groups = new Map<string, Group>();
+    for (const a of accidents) {
+      const g = groups.get(a.roadName) ?? {
+        name: a.roadName, n: 0, lat: 0, lng: 0, dark: 0, wet: 0, rain: 0, vehicles: {},
+      };
+      g.n += 1;
+      g.lat += num(a.latitude);
+      g.lng += num(a.longitude);
+      if (/night|dusk/i.test(a.lightingCondition)) g.dark += 1;
+      if (/wet/i.test(a.roadSurfaceCondition)) g.wet += 1;
+      if (/rain/i.test(a.weatherCondition)) g.rain += 1;
+      g.vehicles[a.vehicleType] = (g.vehicles[a.vehicleType] ?? 0) + 1;
+      groups.set(a.roadName, g);
+    }
+    const roads = [...groups.values()].map((g) => ({ ...g, lat: g.lat / g.n, lng: g.lng / g.n }));
+
+    // จับคู่ผลพยากรณ์แต่ละรายการกับถนนที่อยู่ใกล้ที่สุด
+    const byRoad = new Map<string, typeof predictions>();
+    for (const p of predictions) {
+      let best = roads[0];
+      let bestD = Infinity;
+      for (const r of roads) {
+        const d = (r.lat - num(p.latitude)) ** 2 + (r.lng - num(p.longitude)) ** 2;
+        if (d < bestD) {
+          bestD = d;
+          best = r;
+        }
+      }
+      if (best) byRoad.set(best.name, [...(byRoad.get(best.name) ?? []), p]);
+    }
+
+    const now = Date.now();
+    const pct = (x: number, n: number) => (n > 0 ? Math.round((x / n) * 100) : 0);
+
+    const cards = roads
+      .map((r) => {
+        const preds = byRoad.get(r.name) ?? [];
+        const current = preds.find((p) => p.predictedPeriodEnd.getTime() >= now) ?? preds[0] ?? null;
+        const past = preds.filter((p) => p.predictedPeriodEnd.getTime() < now);
+        // Confidence = สัดส่วนผลพยากรณ์ย้อนหลังที่ตรงกับอุบัติเหตุจริง
+        const confidence =
+          past.length > 0
+            ? Math.round((past.filter((p) => p.matchedAccidentId).length / past.length) * 1000) / 10
+            : null;
+        const [topVehicle, topVehicleN] =
+          Object.entries(r.vehicles).sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
+        const factors = [
+          { type: "lighting", label: "Dusk/Night", pct: pct(r.dark, r.n) },
+          { type: "surface", label: "Wet", pct: pct(r.wet, r.n) },
+          { type: "weather", label: "Rain", pct: pct(r.rain, r.n) },
+          { type: "vehicle", label: topVehicle, pct: pct(topVehicleN, r.n) },
+        ]
+          .sort((a, b) => b.pct - a.pct)
+          .slice(0, 3);
+        return {
+          roadName: r.name,
+          lat: r.lat,
+          lng: r.lng,
+          incidents: r.n,
+          riskScore: current?.riskScore ?? 0,
+          riskLevel: current?.riskLevel ?? 1,
+          confidence,
+          periodStart: current?.predictedPeriodStart ?? null,
+          periodEnd: current?.predictedPeriodEnd ?? null,
+          factors,
+        };
+      })
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .map((c, i) => ({ ...c, rank: i + 1 }));
+
+    res.json(cards);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch hotspot cards" });
+  }
+});

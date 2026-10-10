@@ -4,6 +4,7 @@ import { isLoggedIn } from "@/lib/admin";
 import { hotspotsText } from "@/lib/hotspots-content";
 import { getLocale } from "@/lib/locale";
 import { getHotspots } from "@/lib/public-api";
+// import type { HotspotCardData } from "@/components/admin/HotspotInfoCard";
 
 export async function generateMetadata() {
   return { title: hotspotsText[await getLocale()].title };
@@ -39,3 +40,5 @@ export default async function HotspotsPage() {
     </div>
   );
 }
+
+
